@@ -279,6 +279,14 @@ function renderFoodGrid() {
 // ==============================
 function openCategory(index) {
     currentCategory = MENU[index];
+
+    // Nếu chỉ có 1 quán → auto chọn luôn, không cần hiện danh sách
+    if (currentCategory.restaurants.length === 1) {
+        currentRestaurant = currentCategory.restaurants[0];
+        showConfirmScreen('screenMenu');
+        return;
+    }
+
     renderRestaurantList();
     switchScreen('screenMenu', 'screenRestaurants');
 }
@@ -635,25 +643,49 @@ function launchConfetti() {
 }
 
 // ==============================
-// 📧 EMAIL NOTIFICATION
+// 📧 EMAIL NOTIFICATION (Auto-send via Formsubmit.co)
 // ==============================
+// Lần đầu dùng: Formsubmit sẽ gửi email xác nhận đến YOUR_EMAIL.
+// Bạn cần click link xác nhận trong email đó 1 lần duy nhất.
+// Sau đó mọi thứ sẽ tự động.
 function sendEmailNotification() {
     const t = getRoleText();
     const food = currentCategory.name;
     const rest = currentRestaurant;
 
-    const subject = encodeURIComponent(`🍽️ Tối nay ăn ${food} tại ${rest}!`);
-    const body = encodeURIComponent(
+    const message =
         `${t.self} đã chọn món cho tối nay rồi nhé! 💕\n\n` +
         `🍽️ Món ăn: ${food}\n` +
         `🏪 Quán: ${rest}\n` +
         `📍 Google Maps: ${getMapUrl(rest)}\n` +
         `🎬 Review TikTok: ${getTiktokUrl(rest)}\n\n` +
         `${disagreeCount > 0 ? `(${t.self} đã từ chối ${disagreeCount} lần trước khi chọn quán này 😤)\n\n` : ''}` +
-        `Hẹn ${t.other} tối nay nhé! 😘`
-    );
+        `Hẹn ${t.other} tối nay nhé! 😘`;
 
-    window.open(`mailto:${YOUR_EMAIL}?subject=${subject}&body=${body}`, '_blank');
+    // Gửi email tự động qua Formsubmit.co (AJAX mode)
+    fetch(`https://formsubmit.co/ajax/${YOUR_EMAIL}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+            _subject: `🍽️ Tối nay ăn ${food} tại ${rest}!`,
+            name: `${t.self} - Tối Nay Ăn Gì?`,
+            message: message
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        console.log('✅ Email sent:', data);
+    })
+    .catch(err => {
+        console.error('❌ Email error:', err);
+        // Fallback to mailto if fetch fails
+        const subject = encodeURIComponent(`🍽️ Tối nay ăn ${food} tại ${rest}!`);
+        const body = encodeURIComponent(message);
+        window.open(`mailto:${YOUR_EMAIL}?subject=${subject}&body=${body}`, '_blank');
+    });
 }
 
 // ==============================
